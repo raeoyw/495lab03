@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="utf-8">
+    <title>Cycle Storage Station List</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.5.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.5.0/mapbox-gl.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #container {
+            display: flex;
+            height: 100vh;
+            flex-direction: row;
+            align-items: stretch;
+        }
+
+        #side-panel {
+            flex-basis: 500px;
+            overflow-y: scroll;
+        }
+
+        #map {
+            flex-grow: 1;
+        }
+
+        button {
+            margin-bottom: 10px;
+        }
+
+        table {
+            border-collapse: collapse;
+            border-spacing: 0;
+            width: 100%;
+            border: 1px solid #ddd;
+        }
+
+        h2, button {
+            margin-left: 15px;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 16px;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        @media screen and (max-width: 1024px) {
+            #side-panel {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main id="container">
+        <div id="map"></div>
+        <div id="side-panel">
+            <h2>Cycle Storage Station List</h2>
+            <button>Sort by Longitude</button>
+            <table>
+                <tr>
+                    <th>town</th>
+                    <th>longitude</th>
+                    <th>location</th>
+                </tr>
+            </table>
+        </div>
+    </main>
+    <script>
+        mapboxgl.accessToken =
+            'pk.eyJ1IjoicmFlb3l3IiwiYSI6ImNsYWhheXhqcTAwdzQzb3Q0enB0bDZuaTgifQ.vu2bwoaGN6btT2AIgIE5dQ';
+
+        let map = new mapboxgl.Map({
+            container: 'map', 
+            style: 'mapbox://styles/mapbox/streets-v11',
+            zoom: 7.5, 
+            center: [-1.5, 53.8]
+        });
+
+        async function geojsonFetch() {
+            let response, cycleStorage, england, table;
+            response = await fetch('assets/cycleStorage.geojson');
+            cycleStorage = await response.json();
+            response = await fetch('assets/england.json');
+            england = await response.json();
+
+            table = document.getElementsByTagName("table")[0];
+            let row, cell1, cell2, cell3;
+            for (let i = 0; i < cycleStorage.features.length; i++) {
+                row = table.insertRow(-1);
+                cell1 = row.insertCell(0);
+                cell2 = row.insertCell(1);
+                cell3 = row.insertCell(2);
+                cell1.innerHTML = cycleStorage.features[i].properties.Town;
+                cell2.innerHTML = cycleStorage.features[i].properties.longitude;
+                cell3.innerHTML = cycleStorage.features[i].properties.Location ;
+            }
+
+            map.on('load', function loadingData() {
+
+                map.addSource('cycleStorage', {
+                    type: 'geojson',
+                    data: cycleStorage
+                });
+
+                map.addLayer({
+                    'id': 'cycleStorage-layer',
+                    'type': 'circle',
+                    'source': 'cycleStorage',
+                    'paint': {
+                        'circle-radius': 5,
+                        'circle-stroke-width': 1,
+                        'circle-color': 'red',
+                        'circle-stroke-color': 'white'
+                    }
+                });
+
+                map.addSource('england', {
+                    type: 'geojson',
+                    data: england
+                });
+
+                map.addLayer({
+                    'id': 'england-layer',
+                    'type': 'fill',
+                    'source': 'england',
+                    'paint': {
+                        'fill-color': '#0080ff',
+                        'fill-opacity':0.5
+                    }
+                });
+
+            });
+
+        }
+
+        geojsonFetch();
+
+        let btn = document.getElementsByTagName("button")[0];
+
+        btn.addEventListener('click', sortTable);
+
+        function sortTable(e) {
+            let table, rows, switching, i, x, y, shouldSwitch;
+            table = document.getElementsByTagName("table")[0];
+            switching = true;
+            while (switching) {
+                switching = false;
+                rows = table.rows;
+                for (i = 1; i < (rows.length - 1); i++) {
+                    shouldSwitch = false;
+                    x = parseFloat(rows[i].getElementsByTagName("td")[1].innerHTML);
+                    y = parseFloat(rows[i + 1].getElementsByTagName("td")[1].innerHTML);
+                    if (x < y) {
+                        shouldSwitch = true;
+                        break;
+                    }
+                }
+                if (shouldSwitch) {
+                    rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                    switching = true;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
